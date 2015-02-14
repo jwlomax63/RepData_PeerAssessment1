@@ -5,12 +5,14 @@ output: html_document
 # Part 1: Mean Daily Steps 
 >Calculate daily steps then show their distribution with a histogram  
 
-```{r data_table_load, echo=TRUE, results='hide', warning=FALSE, message=FALSE, fig.path='figure/'}
+
+```r
 # Load the data.table library
 if (require(data.table)==FALSE) {install.packages('data.table')}
 library(data.table)
 ```
-```{r daily_steps_distribution, echo=TRUE, fig.path='figure/'}
+
+```r
 # Read in the data, converting to table
 df = read.csv(file='activity.csv', na.strings='NA')
 dt <- data.table(df)
@@ -23,10 +25,13 @@ totalStepsByDay <- dt[, list(Steps=sum(steps)), by=list(date)]
 hist(totalStepsByDay$Steps, main='Distribution of Daily Steps', xlab='Daily Steps')
 ```
 
+![plot of chunk daily_steps_distribution](figure/daily_steps_distribution.png) 
+
 >Calculate the mean and median daily steps
 
 
-```{r daily_steps_mean_median, echo=TRUE, fig.path='figure/'}
+
+```r
 # Calculate the mean and median daily steps
 results <- data.frame('mean'=numeric(1), 'median'=numeric(1))
 results$mean      <- mean (totalStepsByDay$Steps, na.rm=TRUE)
@@ -35,13 +40,14 @@ results$median    <- median (totalStepsByDay$Steps, na.rm=TRUE)
 # Force R to display all digits, not scientific notation
 options(scipen=10)
 ```
-Mean (daily steps) = **`r results$mean`**  
-Median (daily steps) =  **`r results$median`**  
+Mean (daily steps) = **10766.1887**  
+Median (daily steps) =  **10765**  
 
 # Part 2: Daily Activity Pattern  
 >Calculate the mean steps per interval across days; identify maximum mean steps.
 
-```{r daily_activity, echo=TRUE, fig.path='figure/'}
+
+```r
 # Create a table with mean steps per interval 
 dailyActivity <- dt[, list(MeanSteps=mean(na.omit(steps))), by=list(interval)]
 
@@ -53,20 +59,24 @@ maxInterval <- dailyActivity[MeanSteps == maximumMeanSteps]
 plot (x=dailyActivity$interval, y=dailyActivity$MeanSteps, type='l', main='Daily Activity Pattern', xlab='5-Minute intervals', ylab='Mean Steps')
 ```
 
-The maximum mean steps occurs at interval **`r maxInterval$interval`** with a value of **`r maxInterval$MeanSteps`**  
+![plot of chunk daily_activity](figure/daily_activity.png) 
+
+The maximum mean steps occurs at interval **835** with a value of **206.1698**  
 
 # Part 3: Imputing Missing Values
 >Calulate the number of missing values  
 
-```{r missing_values, echo=TRUE, fig.path='figure/'}
+
+```r
 missingValueRows <- dt[is.na(steps)]
 ```
-Number of observations with missing values is **`r nrow(missingValueRows)`**  
+Number of observations with missing values is **2304**  
  
   
 > Add imputed values and display daily steps distribution
 
-```{r imputed_daily_steps_setkey, echo=TRUE, fig.path='figure/'}
+
+```r
 # Mean steps per interval we already have in data.table 'dailyActivity', use those to impute
 #
 # Update the original data where the steps are NA with the mean steps in 
@@ -74,14 +84,20 @@ Number of observations with missing values is **`r nrow(missingValueRows)`**
 setkey(dt, interval)
 setkey(dailyActivity, interval)
 ```
-```{r imputed_daily_steps_calc, results='hide', echo=TRUE, fig.path='figure/'}
+
+```r
 dt.imputed[is.na(steps),steps := as.integer(dailyActivity$MeanSteps), nomatch=0]
 ```
-```{r imputed_daily_steps_hist, echo=TRUE, fig.path='figure/'}
+
+```r
 # Recaluculate the total daily steps by date on imputed values and display a histogram
 totalStepsByDay.imputed <- dt.imputed[, list(Steps=sum(steps)), by=list(date)]
 hist(totalStepsByDay.imputed$Steps, main='Distribution of Daily Steps (imputed)', xlab='Daily Steps')
+```
 
+![plot of chunk imputed_daily_steps_hist](figure/imputed_daily_steps_hist.png) 
+
+```r
 # Recalculate the mean and median of total daily steps for imputed values
 results.imputed <- data.frame('mean'=numeric(1), 'median'=numeric(1))
 results.imputed$mean<- mean (totalStepsByDay.imputed$Steps, na.rm=TRUE)
@@ -89,25 +105,28 @@ results.imputed$median<- median (totalStepsByDay.imputed$Steps, na.rm=TRUE)
 options(scipen=10)
 ```
 
-Mean (daily steps, imputed) = **`r results.imputed$mean`**  
-Median (daily steps, imputed) =  **`r results.imputed$median`**  
+Mean (daily steps, imputed) = **10749.7705**  
+Median (daily steps, imputed) =  **10641**  
 
 
-Net Change (mean daily steps) = **`r abs(results.imputed$mean - results$mean)`**  
-Net Change (median daily steps) = **`r abs(results.imputed$median - results$median)`**  
+Net Change (mean daily steps) = **16.4182**  
+Net Change (median daily steps) = **124**  
 
 >The imputed values did not change the mean and median total daily steps significantly. However, when looking at the distribution of missing values, below, its not a surprise. Its clear that the missing steps are almost evenly distributed, so adding them would not change the mean and median values significantly.  
 
-```{r missing_values_hist, echo=TRUE, fig.path='figure/'}
 
+```r
 hist(missingValueRows$interval, main='Distribution of Missing Step Values', xlab='Intervals')
-```  
+```
+
+![plot of chunk missing_values_hist](figure/missing_values_hist.png) 
 
 # Part 4: Weekday and Weekend Activity  
 
 > Create a new factor in the imputed data distinguishing between weekday and weekend.
 
-```{r classify_day_func, echo=TRUE, fig.path='figure/'}
+
+```r
 # Function to classify a date by type of day - Weekend or Weekday
 classifyDay <- function(x){
     x<-weekdays(as.Date(x, "%m/%d/%y"))
@@ -115,7 +134,8 @@ classifyDay <- function(x){
 }
 ```
 
-```{r apply_classify_day, echo=TRUE, results='hide',fig.path='figure/'}
+
+```r
 # Add the day classification column to the imputed values data.table
 dt.imputed[,dayClass:=classifyDay(date)]
 ```
@@ -123,19 +143,24 @@ dt.imputed[,dayClass:=classifyDay(date)]
 
 > There are visual differences between the weekday and weekend activity patterns; weekday activity has a spike early in the day, whereas weekend activity is more evenly distributed across the time intervals corresponding to 'non-sleeping hours' 
 
-```{r ave_steps_day_classified, echo=TRUE, fig.path='figure/'}
+
+```r
 #Average the steps both by interval and day classification, the panel plot he results by day classification
 aveStepsByDayClassification <- dt.imputed[, list(aveSteps=ave(na.omit(steps))), by=list(interval, dayClass)]
 ```
-```{r load_lattice, echo=TRUE, results='hide', warning=FALSE, message=FALSE,fig.path='figure/'}
+
+```r
 if (require(lattice)==FALSE) {install.packages('lattice')}
 require(lattice)
 ```
-```{r ave_steps_day_classified_plot, echo=TRUE,fig.path='figure/'}
+
+```r
 xyplot(aveSteps ~ interval | dayClass, 
            data = aveStepsByDayClassification,
            type = "l",
            xlab = "Interval",
            ylab = "Average Steps",
            layout=c(1,2))
-```  
+```
+
+![plot of chunk ave_steps_day_classified_plot](figure/ave_steps_day_classified_plot.png) 
